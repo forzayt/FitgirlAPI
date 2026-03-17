@@ -1,11 +1,11 @@
 # FitGirl API Backend
 
-This is a custom Node.js/Express backend REST API designed to serve game data. It acts as an aggregator, combining official game metadata dynamically fetched from the Steam API with locally stored download links parsed from text files.
+This is a custom Node.js/Express backend REST API designed to serve game data. It acts as an aggregator, combining official game metadata dynamically fetched from the Steam API with backed download links from the official FitGirl Repacks website.
 
 ## Features
 - **Steam API Integration:** Automatically fetches rich game metadata (title, description, release date, images, system requirements) from the official Steam Store using the Game App ID.
-- **Local Data Parsing:** Reads and parses custom local text or JSON files stored in the `data/` directory to extract organized download links.
-- **Combined JSON Response:** Merges the official Steam data with your custom local link data into a single, cohesive JSON response.
+- **Link Data Parsing:** Reads and parses text or JSON files stored in the `data/` directory to extract organized download links.
+- **Combined JSON Response:** Merges the official Steam data with backed download links from the official FitGirl Repacks website into a single, cohesive JSON response.
 - **CORS Enabled:** Cross-Origin Resource Sharing is built-in, meaning the API is ready to be consumed seamlessly by any frontend web application.
 
 ## Endpoints
@@ -18,7 +18,7 @@ This is a custom Node.js/Express backend REST API designed to serve game data. I
 ### 2. Get All Games
 - **URL:** `/api/v1/games`
 - **Method:** `GET`
-- **Description:** Scans the local `data/` directory and returns a list of all available games based on the filenames stored there.
+- **Description:** Scans the `data/` directory and returns a list of all available games based on the filenames stored there.
 - **Response Example:**
   ```json
   {
@@ -36,7 +36,7 @@ This is a custom Node.js/Express backend REST API designed to serve game data. I
 - **Method:** `GET`
 - **Parameters:** `:id` (The Steam App ID of the game, e.g., `271590` for GTA V)
 - **Description:** This is the core endpoint of the application. It performs two main tasks simultaneously:
-  1. **Parses Local Link Data:** Looks for a file named `data/<id>.json` or `data/<id>` (plain text) in the local folder. If it encounters plain text, it structurally parses markdown-style headings (e.g., `## Filehosts`) and bulleted links to generate a categorized list of download links.
+  1. **Parses Link Data:** Looks for a file named `data/<id>.json` or `data/<id>` (plain text) in the data folder, containing backed links from the official FitGirl Repacks website. If it encounters plain text, it structurally parses markdown-style headings (e.g., `## Filehosts`) and bulleted links to generate a categorized list of download links.
   2. **Fetches Steam Data:** Makes an external request to the Steam Store API (`https://store.steampowered.com/api/appdetails?appids=<id>`) to get the game's official details.
 - **Response Example:**
   ```json
@@ -61,7 +61,7 @@ This is a custom Node.js/Express backend REST API designed to serve game data. I
   ```
 
 ## How to Format the `data` Directory
-To add local download links for a specific game, simply create a file in the `data/` folder named exactly as the game's Steam App ID. For example, to add links for Grand Theft Auto V, create `data/271590` or `data/271590.json`.
+To add backed links for a specific game, simply create a file in the `data/` folder named exactly as the game's Steam App ID. For example, to add links for Grand Theft Auto V, create `data/271590` or `data/271590.json`.
 
 If using plain text, you can easily categorize your links like this:
 ```text

@@ -44,7 +44,7 @@ app.get('/api/v1/:id', async (req, res) => {
 
     let localDownloadData = null;
     
-    // Read local data if it exists
+    // Read data if it exists
     let filePathToRead = null;
     if (fs.existsSync(exactFilePath)) {
         filePathToRead = exactFilePath;
@@ -82,8 +82,8 @@ app.get('/api/v1/:id', async (req, res) => {
                 };
             }
         } catch (e) {
-            console.error(`Error reading local file for game ${gameId}:`, e);
-            localDownloadData = { error: 'Failed to read local data' };
+            console.error(`Error reading data file for game ${gameId}:`, e);
+            localDownloadData = { error: 'Failed to read data' };
         }
     }
 
@@ -112,7 +112,7 @@ app.get('/api/v1/:id', async (req, res) => {
     res.json({
         id: gameId,
         steam_data: steamData,
-        download_data: localDownloadData || { message: 'No local download links found' }
+        download_data: localDownloadData || { message: 'No backed links found from the official FitGirl website' }
     });
 });
 
