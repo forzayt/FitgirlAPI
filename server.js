@@ -34,7 +34,25 @@ app.get('/api/v1/games', (req, res) => {
     });
 }); 
 
-// 3. Get a specific game by ID endpoint: /id
+// 3. Get popular games from SteamSpy
+app.get('/api/v1/popular', async (req, res) => {
+    try {
+        const spyResponse = await fetch('https://steamspy.com/api.php?request=top100forever');
+        if (spyResponse.ok) {
+            const data = await spyResponse.json();
+            // Data is an object where keys are game IDs, or an array if empty
+            const popularIds = Object.keys(data);
+            res.json({ popular: popularIds });
+        } else {
+            res.status(spyResponse.status).json({ error: 'Failed to fetch popular games from SteamSpy API' });
+        }
+    } catch (e) {
+        console.error('Error fetching SteamSpy API for popular games:', e.message);
+        res.status(500).json({ error: 'Failed to fetch popular games' });
+    }
+});
+
+// 4. Get a specific game by ID endpoint: /id
 app.get('/api/v1/:id', async (req, res) => {
     const gameId = req.params.id;
     
