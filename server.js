@@ -98,7 +98,7 @@ app.get('/api/v1/:id', async (req, res) => {
             if (steamJson[gameId] && steamJson[gameId].success) {
                 steamData = steamJson[gameId].data;
             } else {
-                steamData = { error: 'Game not found on Steam or no successful response.' };
+                steamData = { error: 'Game not found will be added soon.' };
             }
         } else {
             steamData = { error: `Steam API responded with status ${steamResponse.status}` };
@@ -112,7 +112,7 @@ app.get('/api/v1/:id', async (req, res) => {
     res.json({
         id: gameId,
         steam_data: steamData,
-        download_data: localDownloadData || { message: 'No backed links found from the official FitGirl website' }
+        download_data: localDownloadData || { message: 'Game not found will be added soon.' }
     });
 });
 
