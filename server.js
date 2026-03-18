@@ -34,14 +34,27 @@ app.get('/api/v1/games', (req, res) => {
     });
 }); 
 
-// 3. Get popular games from SteamSpy
+// 3. Get popular games from SteamSpy (filtered by local data availability)
 app.get('/api/v1/popular', async (req, res) => {
     try {
         const spyResponse = await fetch('https://steamspy.com/api.php?request=top100forever');
         if (spyResponse.ok) {
             const data = await spyResponse.json();
-            // Data is an object where keys are game IDs, or an array if empty
-            const popularIds = Object.keys(data);
+            const steamSpyIds = Object.keys(data);
+            
+            let localGames = [];
+            try {
+                const files = await fs.promises.readdir(DATA_DIR);
+                localGames = files.map(file => path.basename(file, path.extname(file)));
+            } catch (err) {
+                if (err.code !== 'ENOENT') {
+                    throw err; // Re-throw to be caught by the outer catch block
+                }
+            }
+            
+            // Filter out IDs that we don't have local data for
+            const popularIds = steamSpyIds.filter(id => localGames.includes(id));
+            
             res.json({ popular: popularIds });
         } else {
             res.status(spyResponse.status).json({ error: 'Failed to fetch popular games from SteamSpy API' });
@@ -60,9 +73,7 @@ app.get('/api/v1/:id', async (req, res) => {
     const exactFilePath = path.join(DATA_DIR, `${gameId}.json`);
     const noExtFilePath = path.join(DATA_DIR, gameId);
 
-    let localDownloadData = null;
-    
-    // Read data if it exists
+    // If local data doesn't exist, strictly reject the request
     let filePathToRead = null;
     if (fs.existsSync(exactFilePath)) {
         filePathToRead = exactFilePath;
@@ -70,42 +81,46 @@ app.get('/api/v1/:id', async (req, res) => {
         filePathToRead = noExtFilePath;
     }
 
-    if (filePathToRead) {
-        try {
-            const data = fs.readFileSync(filePathToRead, 'utf8');
-            try {
-                // Try to parse it as JSON if it is valid JSON
-                localDownloadData = JSON.parse(data);
-            } catch (e) {
-                // If it's plain text (like the text file with links), parse the URLs
-                const links = [];
-                const lines = data.split('\n');
-                let currentSection = 'General';
-                
-                for (let line of lines) {
-                    line = line.trim();
-                    if (!line) continue;
-                    
-                    if (line.startsWith('##')) {
-                        currentSection = line.replace('##', '').trim();
-                    } else if (line.startsWith('- http') || line.startsWith('http')) {
-                        let linkUrl = line.startsWith('- ') ? line.substring(2).trim() : line;
-                        links.push({ category: currentSection, url: linkUrl });
-                    }
-                }
-                
-                localDownloadData = {
-                    parsed_links: links,
-                    // raw_text: data
-                };
-            }
-        } catch (e) {
-            console.error(`Error reading data file for game ${gameId}:`, e);
-            localDownloadData = { error: 'Failed to read data' };
-        }
+    if (!filePathToRead) {
+         return res.status(404).json({ error: 'Game not found in database. Will be added soon.' });
     }
 
-    // Fetch data from Steam API
+    let localDownloadData = null;
+    
+    try {
+        const data = fs.readFileSync(filePathToRead, 'utf8');
+        try {
+            // Try to parse it as JSON if it is valid JSON
+            localDownloadData = JSON.parse(data);
+        } catch (e) {
+            // If it's plain text (like the text file with links), parse the URLs
+            const links = [];
+            const lines = data.split('\n');
+            let currentSection = 'General';
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                if (line.startsWith('##')) {
+                    currentSection = line.replace('##', '').trim();
+                } else if (line.startsWith('- http') || line.startsWith('http')) {
+                    let linkUrl = line.startsWith('- ') ? line.substring(2).trim() : line;
+                    links.push({ category: currentSection, url: linkUrl });
+                }
+            }
+            
+            localDownloadData = {
+                parsed_links: links,
+                // raw_text: data
+            };
+        }
+    } catch (e) {
+        console.error(`Error reading data file for game ${gameId}:`, e);
+        localDownloadData = { error: 'Failed to read data' };
+    }
+
+    // Fetch data from Steam API ONLY if the game exists locally
     let steamData = null;
     try {
         // Using global fetch (Requires Node 18+)
@@ -116,7 +131,7 @@ app.get('/api/v1/:id', async (req, res) => {
             if (steamJson[gameId] && steamJson[gameId].success) {
                 steamData = steamJson[gameId].data;
             } else {
-                steamData = { error: 'Game not found will be added soon.' };
+                steamData = { error: 'Game not found on Steam store.' };
             }
         } else {
             steamData = { error: `Steam API responded with status ${steamResponse.status}` };
@@ -130,7 +145,7 @@ app.get('/api/v1/:id', async (req, res) => {
     res.json({
         id: gameId,
         steam_data: steamData,
-        download_data: localDownloadData || { message: 'Game not found will be added soon.' }
+        download_data: localDownloadData
     });
 });
 

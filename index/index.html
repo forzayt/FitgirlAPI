@@ -229,6 +229,23 @@
             <div class="card">
                 <div class="endpoint-header">
                     <span class="method-badge bg-get">GET</span>
+                    <code class="endpoint-path">/api/v1/popular</code>
+                </div>
+                <h3 class="card-title">Get Popular Games</h3>
+                <p class="card-desc">Fetches the top 100 most popular games from SteamSpy and filters them against your local database, ensuring only fully archived popular titles are returned.</p>
+                <div class="params-box">
+                    <div class="params-title"><i class='bx bx-trending-up'></i> Response Data</div>
+                    <div class="param-row">
+                        <span class="param-name">popular</span>
+                        <span class="param-desc">Array of popular Game IDs mapped with local data</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Endpoint 3 -->
+            <div class="card">
+                <div class="endpoint-header">
+                    <span class="method-badge bg-get">GET</span>
                     <code class="endpoint-path">/api/v1/:id</code>
                 </div>
                 <h3 class="card-title">Get Game Details</h3>
@@ -246,7 +263,7 @@
                 </div>
             </div>
 
-            <!-- Endpoint 3 -->
+            <!-- Endpoint 4 -->
             <!-- <div class="card">
                 <div class="endpoint-header">
                     <span class="method-badge bg-get">GET</span>
