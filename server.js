@@ -113,16 +113,18 @@ async function scrapeFitGirl(gameTitle) {
         
         const postHtml = await postResponse.text();
         
-        // Extract links using regex (hosters like fuckingfast, datanodes, etc.)
+        // Extract links using regex (hosters like fuckingfast, datanodes, etc., and magnet links)
         const links = [];
-        const linkRegex = /href="(https?:\/\/(?:fuckingfast\.co|datanodes\.to|multiupload\.io|1337x\.to|tapochek\.net|datanodes\.to)[^"]+)"/g;
+        const linkRegex = /href="((?:https?:\/\/(?:fuckingfast\.co|datanodes\.to|multiupload\.io|1337x\.to|tapochek\.net|datanodes\.to)[^"]+)|(?:magnet:\?xt=[^"]+))"/g;
         
         let match;
         while ((match = linkRegex.exec(postHtml)) !== null) {
             const url = match[1];
             // Determine category based on URL
             let category = 'Direct Links';
-            if (url.includes('1337x') || url.includes('tapochek') || url.includes('.torrent')) {
+            if (url.startsWith('magnet:')) {
+                category = 'Magnet';
+            } else if (url.includes('1337x') || url.includes('tapochek') || url.includes('.torrent')) {
                 category = 'Torrent';
             } else if (url.includes('fuckingfast') || url.includes('datanodes') || url.includes('multiupload')) {
                 category = 'Direct Links';
