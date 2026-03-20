@@ -5,7 +5,6 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
 
 // Middleware
 app.use(cors());
@@ -16,25 +15,16 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index', 'index.html'));
 });
 
-// 2. Get all games endpoint: /games
-app.get('/api/v1/games', (req, res) => {
-    fs.readdir(DATA_DIR, (err, files) => {
-        if (err) {
-            // If the data directory doesn't exist yet
-            if (err.code === 'ENOENT') {
-                return res.json({ games: [] });
-            }
-            return res.status(500).json({ error: 'Failed to read data directory' });
-        }
-        
-        // Extract game IDs from filenames
-        const games = files.map(file => path.basename(file, path.extname(file)));
-        
-        res.json({ games });
-    });
-}); 
+// // 2. Get all games endpoint (DEPRECATED: now using dynamic scraping)
 
-// 3. Get popular games from SteamSpy (filtered by local data availability)
+// app.get('/api/v1/games', (req, res) => {
+//     res.json({ 
+//         message: "This endpoint is deprecated as the API now uses dynamic scraping to support any Steam ID.",
+//         games: [] 
+//     });
+// }); 
+
+// 3. Get popular games from SteamSpy
 app.get('/api/v1/popular', async (req, res) => {
     try {
         const spyResponse = await fetch('https://steamspy.com/api.php?request=top100forever');
@@ -42,20 +32,8 @@ app.get('/api/v1/popular', async (req, res) => {
             const data = await spyResponse.json();
             const steamSpyIds = Object.keys(data);
             
-            let localGames = [];
-            try {
-                const files = await fs.promises.readdir(DATA_DIR);
-                localGames = files.map(file => path.basename(file, path.extname(file)));
-            } catch (err) {
-                if (err.code !== 'ENOENT') {
-                    throw err; // Re-throw to be caught by the outer catch block
-                }
-            }
-            
-            // Filter out IDs that we don't have local data for
-            const popularIds = steamSpyIds.filter(id => localGames.includes(id));
-            
-            res.json({ popular: popularIds });
+            // Return all top IDs since we can now scrape any game on the fly
+            res.json({ popular: steamSpyIds });
         } else {
             res.status(spyResponse.status).json({ error: 'Failed to fetch popular games from SteamSpy API' });
         }
@@ -69,67 +47,16 @@ app.get('/api/v1/popular', async (req, res) => {
 app.get('/api/v1/:id', async (req, res) => {
     const gameId = req.params.id;
     
-    // Support files with or without .json extension (based on the sample data)
-    const exactFilePath = path.join(DATA_DIR, `${gameId}.json`);
-    const noExtFilePath = path.join(DATA_DIR, gameId);
-
-    // If local data doesn't exist, strictly reject the request
-    let filePathToRead = null;
-    if (fs.existsSync(exactFilePath)) {
-        filePathToRead = exactFilePath;
-    } else if (fs.existsSync(noExtFilePath)) {
-        filePathToRead = noExtFilePath;
-    }
-
-    if (!filePathToRead) {
-         return res.status(404).json({ error: 'Game not found in database. Will be added soon.' });
-    }
-
-    let localDownloadData = null;
-    
-    try {
-        const data = fs.readFileSync(filePathToRead, 'utf8');
-        try {
-            // Try to parse it as JSON if it is valid JSON
-            localDownloadData = JSON.parse(data);
-        } catch (e) {
-            // If it's plain text (like the text file with links), parse the URLs
-            const links = [];
-            const lines = data.split('\n');
-            let currentSection = 'General';
-            
-            for (let line of lines) {
-                line = line.trim();
-                if (!line) continue;
-                
-                if (line.startsWith('##')) {
-                    currentSection = line.replace('##', '').trim();
-                } else if (line.startsWith('- http') || line.startsWith('http')) {
-                    let linkUrl = line.startsWith('- ') ? line.substring(2).trim() : line;
-                    links.push({ category: currentSection, url: linkUrl });
-                }
-            }
-            
-            localDownloadData = {
-                parsed_links: links,
-                // raw_text: data
-            };
-        }
-    } catch (e) {
-        console.error(`Error reading data file for game ${gameId}:`, e);
-        localDownloadData = { error: 'Failed to read data' };
-    }
-
-    // Fetch data from Steam API ONLY if the game exists locally
+    // 1. Fetch data from Steam API first to get the title
     let steamData = null;
+    let gameTitle = null;
     try {
-        // Using global fetch (Requires Node 18+)
         const steamResponse = await fetch(`https://store.steampowered.com/api/appdetails?appids=${gameId}`);
         if (steamResponse.ok) {
             const steamJson = await steamResponse.json();
-            // The API returns an object with the game ID as the key, e.g., {"271590": { "success": true, "data": {...} }}
             if (steamJson[gameId] && steamJson[gameId].success) {
                 steamData = steamJson[gameId].data;
+                gameTitle = steamData.name;
             } else {
                 steamData = { error: 'Game not found on Steam store.' };
             }
@@ -141,13 +68,82 @@ app.get('/api/v1/:id', async (req, res) => {
         steamData = { error: 'Failed to fetch from Steam API', details: e.message };
     }
 
-    // Return the combined Response
+    // 2. Dynamically Scrape download data if we have a title
+    let downloadData = null;
+    if (gameTitle) {
+        console.log(`Searching FitGirl for: ${gameTitle}...`);
+        downloadData = await scrapeFitGirl(gameTitle);
+    }
+
+    if (!downloadData) {
+         return res.status(404).json({ 
+            id: gameId,
+            steam_data: steamData,
+            error: 'No download links found for this game.' 
+         });
+    }
+
+    // Return the combined Response (matching original structure)
     res.json({
         id: gameId,
         steam_data: steamData,
-        download_data: localDownloadData
+        download_data: downloadData
     });
 });
+
+// Helper function to scrape links directly from FitGirl website
+async function scrapeFitGirl(gameTitle) {
+    try {
+        // Search for the game title on FitGirl site
+        const searchUrl = `https://fitgirl-repacks.site/?s=${encodeURIComponent(gameTitle)}`;
+        const searchResponse = await fetch(searchUrl);
+        if (!searchResponse.ok) return null;
+        
+        const searchHtml = await searchResponse.text();
+        
+        // Find the first post link in search results
+        const postLinkMatch = searchHtml.match(/<h1 class="entry-title"><a href="(https:\/\/fitgirl-repacks\.site\/[^"]+)"/);
+        if (!postLinkMatch) return null;
+        
+        const postUrl = postLinkMatch[1];
+        
+        // Fetch the actual post page
+        const postResponse = await fetch(postUrl);
+        if (!postResponse.ok) return null;
+        
+        const postHtml = await postResponse.text();
+        
+        // Extract links using regex (hosters like fuckingfast, datanodes, etc.)
+        const links = [];
+        const linkRegex = /href="(https?:\/\/(?:fuckingfast\.co|datanodes\.to|multiupload\.io|1337x\.to|tapochek\.net|datanodes\.to)[^"]+)"/g;
+        
+        let match;
+        while ((match = linkRegex.exec(postHtml)) !== null) {
+            const url = match[1];
+            // Determine category based on URL
+            let category = 'Direct Links';
+            if (url.includes('1337x') || url.includes('tapochek') || url.includes('.torrent')) {
+                category = 'Torrent';
+            } else if (url.includes('fuckingfast') || url.includes('datanodes') || url.includes('multiupload')) {
+                category = 'Direct Links';
+            }
+            
+            if (!links.some(l => l.url === url)) {
+                links.push({ category, url });
+            }
+        }
+        
+        if (links.length === 0) return null;
+
+        return { 
+            parsed_links: links,
+            // You can optionally add more fields here if needed, but keeping it minimal to match previous structure
+        };
+    } catch (error) {
+        console.error('Scraping error:', error);
+        return null;
+    }
+}
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
