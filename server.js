@@ -121,13 +121,23 @@ async function scrapeFitGirl(gameTitle) {
         while ((match = linkRegex.exec(postHtml)) !== null) {
             const url = match[1];
             // Determine category based on URL
-            let category = 'Direct Links';
+            let category = 'Other';
             if (url.startsWith('magnet:')) {
                 category = 'Magnet';
-            } else if (url.includes('1337x') || url.includes('tapochek') || url.includes('.torrent')) {
-                category = 'Torrent';
-            } else if (url.includes('fuckingfast') || url.includes('datanodes') || url.includes('multiupload')) {
-                category = 'Direct Links';
+            } else if (url.includes('1337x')) {
+                category = '1337x (Torrent)';
+            } else if (url.includes('tapochek.net')) {
+                category = 'Tapochek (Torrent)';
+            } else if (url.includes('.torrent')) {
+                category = 'Torrent File';
+            } else if (url.includes('fuckingfast.co')) {
+                category = 'FuckingFast';
+            } else if (url.includes('datanodes.to')) {
+                category = 'DataNodes';
+            } else if (url.includes('multiupload.io')) {
+                category = 'MultiUpload';
+            } else {
+                category = 'Direct Link';
             }
             
             if (!links.some(l => l.url === url)) {
