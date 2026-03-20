@@ -29,6 +29,10 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        html {
+            scroll-behavior: smooth;
+        }
+        
         body {
             background-color: var(--bg);
             color: var(--text-main);
@@ -128,9 +132,25 @@
         .card:hover { transform: translateY(-8px); border-color: rgba(255,255,255,0.15); box-shadow: 0 20px 40px rgba(0,0,0,0.4); background: var(--surface-hover); }
         .card:hover::before { opacity: 1; }
 
+        /* Magnetic & Spotlight Effects */
+        .magnetic { transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1); will-change: transform; display: inline-block; }
+        
+        .card { position: relative; }
+        .spotlight {
+            position: absolute; inset: 0; pointer-events: none; opacity: 0;
+            background: radial-gradient(600px circle at var(--x) var(--y), rgba(139, 92, 246, 0.15), transparent 40%);
+            transition: opacity 0.5s ease; z-index: 1;
+        }
+        .card:hover .spotlight { opacity: 1; }
+
+        /* Reveal Animations */
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.2, 1, 0.3, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
         .method-badge { 
             display: inline-block; padding: 0.25rem 0.75rem; border-radius: 0.5rem; 
             font-weight: 700; font-size: 0.8rem; margin-right: 1rem; text-transform: uppercase; letter-spacing: 0.5px;
+            position: relative; z-index: 2;
         }
         .bg-get { background: rgba(16, 185, 129, 0.15); color: #34d399; }
         
@@ -178,17 +198,17 @@
             <i class='bx bx-game'></i> FitGirl<span>API</span>
         </a>
         <div class="nav-links">
-             <a href="https://github.com/forzayt/FitgirlAPI" target="_blank" class="social-link" title="Source Code"><i class='bx bxl-github'></i></a>
+             <a href="https://github.com/forzayt/FitgirlAPI" target="_blank" class="social-link magnetic" title="Source Code"><i class='bx bxl-github'></i></a>
             
-            <a href="https://stats.uptimerobot.com/xhgHryp5Db" target="_blank" class="nav-item">Status</a>
-            <a href="#endpoints" class="nav-item">Endpoints</a>
-            <a href="https://fitgirl-repacks.site/" target="_blank" class="btn-contribute">
+            <a href="https://stats.uptimerobot.com/xhgHryp5Db" target="_blank" class="nav-item magnetic">Status</a>
+            <a href="#endpoints" class="nav-item magnetic">Endpoints</a>
+            <a href="https://fitgirl-repacks.site/" target="_blank" class="btn-contribute magnetic">
                  Official Site
             </a>
         </div>
     </nav>
 
-    <header class="hero">
+    <header class="hero reveal">
         <div class="status-badge">
             <div class="pulse"></div>
             API Online & Active
@@ -199,14 +219,14 @@
         <div class="url-card">
             <div class="url-label">BASE URL</div>
             <code class="url-value" id="baseUrl">https://fitgirlapi.onrender.com</code>
-            <button class="btn-copy" onclick="copyUrl()" aria-label="Copy Base URL" title="Copy URL">
+            <button class="btn-copy magnetic" onclick="copyUrl()" aria-label="Copy Base URL" title="Copy URL">
                 <i class='bx bx-copy' id="copyIcon"></i>
             </button>
         </div>
     </header>
 
     <main id="endpoints" class="container">
-        <div class="section-header">
+        <div class="section-header reveal">
             <h2 class="section-title">Available Endpoints</h2>
             <p class="section-subtitle">Seamlessly integrate game data into your frontend application with these intuitive routes.</p>
         </div>
@@ -230,7 +250,8 @@
             </div> -->
 
             <!-- Endpoint 2 -->
-            <div class="card">
+            <div class="card reveal">
+                <div class="spotlight"></div>
                 <div class="endpoint-header">
                     <span class="method-badge bg-get">GET</span>
                     <code class="endpoint-path">/api/v1/popular</code>
@@ -247,7 +268,8 @@
             </div>
 
             <!-- Endpoint 3 -->
-            <div class="card">
+            <div class="card reveal">
+                <div class="spotlight"></div>
                 <div class="endpoint-header">
                     <span class="method-badge bg-get">GET</span>
                     <code class="endpoint-path">/api/v1/:id</code>
@@ -289,11 +311,12 @@
     <footer>
         <div class="footer-content">
             <div>
-                &copy; 2026 FitGirl API Project. Node.js & Express.
+                &copy; 2026 FitGirl API Project.
             </div>
             <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">
                 Special thanks to <a href="https://store.steampowered.com/" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 500;">Steam Official</a>, 
                 <a href="https://steamspy.com/" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 500;">SteamSpy</a>, 
+                <a href="https://steamdb.info/" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 500;">SteamDB</a>, 
                 and <a href="https://fitgirl-repacks.site/" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 500;">FitGirl-Repacks</a> 
                 for providing public data.
             </div>
@@ -321,6 +344,42 @@
                 console.error('Failed to copy text: ', err);
             });
         }
+
+        // Magnetic Effect
+        document.querySelectorAll('.magnetic').forEach(btn => {
+            btn.addEventListener('mousemove', e => {
+                const rect = btn.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.transform = '';
+            });
+        });
+
+        // Card Spotlight Effect
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--x', `${x}px`);
+                card.style.setProperty('--y', `${y}px`);
+            });
+        });
+
+        // Scroll Reveal
+        const observerOptions = { threshold: 0.1 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     </script>
 </body>
 </html>
