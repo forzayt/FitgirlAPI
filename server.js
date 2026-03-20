@@ -79,7 +79,7 @@ app.get('/api/v1/:id', async (req, res) => {
          return res.status(404).json({ 
             id: gameId,
             steam_data: steamData,
-            error: 'No download links found for this game.' 
+            error: 'Nah bro we can\'t find any download links for this game on fitgirl.' 
          });
     }
 
