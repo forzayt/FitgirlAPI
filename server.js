@@ -6,9 +6,57 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Request tracking
+let activeRequests = 0;
+let clients = [];
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Middleware to track active requests
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/v1/')) {
+        activeRequests++;
+        notifyClients();
+
+        // Decrement when the response is finished or closed
+        res.on('finish', () => {
+            activeRequests = Math.max(0, activeRequests - 1);
+            notifyClients();
+        });
+
+        res.on('close', () => {
+            // Check if it was already decremented via 'finish'
+            // Express 'finish' usually handles this, but 'close' is a fallback for aborted requests
+        });
+    }
+    next();
+});
+
+function notifyClients() {
+    const data = JSON.stringify({ activeRequests });
+    clients.forEach(client => client.res.write(`data: ${data}\n\n`));
+}
+
+// SSE endpoint for live stats
+app.get('/api/live-stats', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const clientId = Date.now();
+    const newClient = { id: clientId, res };
+    clients.push(newClient);
+
+    // Send initial count
+    res.write(`data: ${JSON.stringify({ activeRequests })}\n\n`);
+
+    req.on('close', () => {
+        clients = clients.filter(client => client.id !== clientId);
+    });
+});
 
 // 1. Root endpoint: /
 app.get('/', (req, res) => {

@@ -88,6 +88,34 @@
             font-size: 0.85rem; font-weight: 600; margin-bottom: 2rem; 
         }
         .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 10px #10b981; animation: pulse 2s infinite; }
+        
+        .live-counter {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 0.4rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            margin-right: auto;
+            margin-left: 1.5rem;
+        }
+        .breathing-icon {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-primary);
+            animation: breathe 3s infinite ease-in-out;
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px var(--accent-primary); }
+            50% { transform: scale(1.5); opacity: 0.6; box-shadow: 0 0 15px var(--accent-primary); }
+        }
+
         @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
         
         .hero h1 { font-size: clamp(3rem, 6vw, 5rem); font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -1px; }
@@ -195,9 +223,14 @@
 
     <nav>
         <a href="/" class="logo">
-            <i class='bx bx-game'></i> FitGirl<span>API</span>
+            <i class='bx bxs-zap'></i>
+            FitGirl<span>API</span>
         </a>
+
+       
+
         <div class="nav-links">
+             
              <a href="https://github.com/forzayt/FitgirlAPI" target="_blank" class="social-link magnetic" title="Source Code"><i class='bx bxl-github'></i></a>
             
             <a href="https://stats.uptimerobot.com/xhgHryp5Db" target="_blank" class="nav-item magnetic">Status</a>
@@ -211,7 +244,10 @@
     <header class="hero reveal">
         <div class="status-badge">
             <div class="pulse"></div>
-            API Online & Active
+            <span id="requestCount">0</span>Active Calls
+            <span style="font-size: 0.75rem; opacity: 0.7;"></span>
+        </div>
+            
         </div>
         <h1>Game Data <span class="text-gradient">Aggregator</span></h1>
         <p>A robust, high-performance REST API that acts as a bridge, dynamically merging rich official Steam metadata with powerful, backed download links from the official FitGirl Repacks website into a cohesive JSON experience.</p>
@@ -380,6 +416,21 @@
         }, observerOptions);
 
         document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // Live Request Counter (SSE)
+        const requestCountEl = document.getElementById('requestCount');
+        if (requestCountEl) {
+            const eventSource = new EventSource('/api/live-stats');
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.activeRequests !== undefined) {
+                    requestCountEl.innerText = data.activeRequests.toLocaleString();
+                }
+            };
+            eventSource.onerror = () => {
+                console.error("SSE connection failed. Retrying...");
+            };
+        }
     </script>
 </body>
 </html>
