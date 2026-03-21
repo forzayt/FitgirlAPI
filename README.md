@@ -972,6 +972,12 @@ This marks the end of our beginner-friendly journey through the `FitgirlAPI` pro
 
 ---
 
+## Showcase
+
+Explore projects that are using the **FitGirl API**:
+
+- **[GameVault](https://gamevault-ebon.vercel.app/)**: A comprehensive Steam Game Explorer. Search for any game by its Steam App ID to access detailed metadata, system requirements, and direct download links aggregated by this API.
+
 
 
 
